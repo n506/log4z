@@ -217,6 +217,18 @@ enum ENUM_LOG_LEVEL
     LOG_LEVEL_FATAL,
 };
 
+// LOG descriptions
+static const char *const LOG_STRING[]=
+{
+    "LOG_TRACE",
+    "LOG_DEBUG",
+    "LOG_INFO ",
+    "LOG_WARN ",
+    "LOG_ERROR",
+    "LOG_ALARM",
+    "LOG_FATAL",
+};
+
 //////////////////////////////////////////////////////////////////////////
 //! -----------------default logger config, can change on this.-----------
 //////////////////////////////////////////////////////////////////////////
