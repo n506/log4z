@@ -177,7 +177,8 @@
 #include <list>
 #include <queue>
 #include <deque>
-
+#include <algorithm>
+#include <utility>
 
 //! logger ID type. DO NOT TOUCH
 typedef int LoggerId;
@@ -205,21 +206,90 @@ const char*const LOG4Z_MAIN_LOGGER_KEY = "Main";
 #define LOG4Z_FORMAT_INPUT_ENABLE
 #endif
 
+//! LOG Level implementation
+#ifdef WIN32
+typedef WORD LOG_COLOR;
+#else
+typedef std::string LOG_COLOR;
+#endif
 //! LOG Level
-enum ENUM_LOG_LEVEL
-{
-    LOG_LEVEL_TRACE = 0,
-    LOG_LEVEL_DEBUG,
-    LOG_LEVEL_INFO,
-    LOG_LEVEL_WARN,
-    LOG_LEVEL_ERROR,
-    LOG_LEVEL_ALARM,
-    LOG_LEVEL_FATAL,
+struct LOG_LEVEL {
+
+	LOG_LEVEL(int _val, const char* _name, LOG_COLOR _color) : val(_val), name(_name), color(_color) {}
+	LOG_LEVEL(const LOG_LEVEL& lvl) : val(lvl.val), name(lvl.name.c_str()), color(lvl.color) {}
+
+
+	bool operator==(const LOG_LEVEL& lvl)  const {
+		return (val == lvl.val && name == lvl.name && color == lvl.color);
+	}
+
+	bool operator!=(const LOG_LEVEL& lvl) const {
+		return (val != lvl.val || name != lvl.name || color != lvl.color);
+	}
+
+	bool operator>(const LOG_LEVEL& lvl) const {
+		return (val > lvl.val);
+	}
+
+	bool operator<(const LOG_LEVEL& lvl) const {
+		return (val < lvl.val);
+	}
+
+	bool operator>=(const LOG_LEVEL& lvl) const {
+		return (val >= lvl.val);
+	}
+
+	bool operator<=(const LOG_LEVEL& lvl) const {
+		return (val <= lvl.val);
+	}
+	/*
+	void swap(LOG_LEVEL& lvl1, LOG_LEVEL& lvl2) {
+		using std::swap;
+		std::swap(lvl1.val, lvl2.val);
+		std::swap(lvl1.name, lvl2.name);
+		std::swap(lvl1.color, lvl2.color);
+	}
+
+	LOG_LEVEL& operator=(LOG_LEVEL lvl) {
+		//swap(*this, lvl);
+		val = lvl.val;
+		name = lvl.name;
+		color = lvl.color;
+		return *this;
+	}
+	*/
+	int val;
+	std::string name;
+	LOG_COLOR color;
 };
+/*
+const static char LOG_COLOR[LOG_LEVEL_FATAL + 1][50] = {
+"\e[0m",
+"\e[0m",
+"\e[34m\e[1m",//hight blue
+"\e[33m", //yellow
+"\e[31m", //red
+"\e[32m", //green
+"\e[35m" };
+#endif
+*/
 
 //////////////////////////////////////////////////////////////////////////
 //! -----------------default logger config, can change on this.-----------
 //////////////////////////////////////////////////////////////////////////
+
+#define log_level_base 0
+//! log levels
+const LOG_LEVEL
+	LOG_LEVEL_TRACE{ log_level_base + 0,{ "LOG_TRACE" }, 0 },
+	LOG_LEVEL_DEBUG{ log_level_base + 1 ,{ "LOG_DEBUG" }, 0 },
+	LOG_LEVEL_INFO{ log_level_base + 2,{ "LOG_INFO" }, FOREGROUND_BLUE | FOREGROUND_GREEN },
+	LOG_LEVEL_WARN{ log_level_base + 3,{ "LOG_WARN" }, FOREGROUND_GREEN | FOREGROUND_RED },
+	LOG_LEVEL_ERROR{ log_level_base + 4,{ "LOG_ERROR" }, FOREGROUND_RED },
+	LOG_LEVEL_ALARM{ log_level_base + 5,{ "LOG_ALARM" }, FOREGROUND_GREEN },
+	// add your custom levels before FATAL, FATAL should be the highest one
+	LOG_LEVEL_FATAL{ log_level_base + 999,{ "LOG_FATAL" }, FOREGROUND_RED | FOREGROUND_BLUE };
+
 //! the max logger count.
 const int LOG4Z_LOGGER_MAX = 10;
 //! the max log content length.
@@ -233,7 +303,7 @@ const bool LOG4Z_ALL_DEBUGOUTPUT_DISPLAY = false;
 //! default logger output file.
 const char* const LOG4Z_DEFAULT_PATH = "./log/";
 //! default log filter level
-const int LOG4Z_DEFAULT_LEVEL = LOG_LEVEL_DEBUG;
+const LOG_LEVEL LOG4Z_DEFAULT_LEVEL = LOG_LEVEL_DEBUG;
 //! default logger display
 const bool LOG4Z_DEFAULT_DISPLAY = true;
 //! default logger output to file
@@ -249,10 +319,6 @@ const bool LOG4Z_DEFAULT_SHOWSUFFIX = true;
 //! -----------------------------------------------------------------------
 //////////////////////////////////////////////////////////////////////////
 
-
-
-
-
 #ifndef _ZSUMMER_BEGIN
 #define _ZSUMMER_BEGIN namespace zsummer {
 #endif  
@@ -261,9 +327,6 @@ const bool LOG4Z_DEFAULT_SHOWSUFFIX = true;
 #endif
 _ZSUMMER_BEGIN
 _ZSUMMER_LOG4Z_BEGIN
-
-
-
 
 //! log4z class
 class ILog4zManager
@@ -298,15 +361,15 @@ public:
     virtual LoggerId findLogger(const char* key) =0;
 
     //pre-check the log filter. if filter out return false. 
-    virtual bool prePushLog(LoggerId id, int level) = 0;
+    virtual bool prePushLog(LoggerId id, const LOG_LEVEL& level) = 0;
     //! Push log, thread safe.
-    virtual bool pushLog(LoggerId id, int level, const char * log, const char * file = NULL, int line = 0) = 0;
+    virtual bool pushLog(LoggerId id, const LOG_LEVEL& level, const char * log, const char * file = NULL, int line = 0) = 0;
 
     //! set logger's attribute, thread safe.
     virtual bool enableLogger(LoggerId id, bool enable) = 0; // immediately when enable, and queue up when disable. 
     virtual bool setLoggerName(LoggerId id, const char * name) = 0;
     virtual bool setLoggerPath(LoggerId id, const char * path) = 0;
-    virtual bool setLoggerLevel(LoggerId id, int nLevel) = 0; // immediately when enable, and queue up when disable. 
+    virtual bool setLoggerLevel(LoggerId id, const LOG_LEVEL& nLevel) = 0; // immediately when enable, and queue up when disable. 
     virtual bool setLoggerFileLine(LoggerId id, bool enable) = 0;
     virtual bool setLoggerDisplay(LoggerId id, bool enable) = 0;
     virtual bool setLoggerOutFile(LoggerId id, bool enable) = 0;

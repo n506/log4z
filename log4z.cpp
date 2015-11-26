@@ -83,38 +83,6 @@
 _ZSUMMER_BEGIN
 _ZSUMMER_LOG4Z_BEGIN
 
-static const char *const LOG_STRING[]=
-{
-    "LOG_TRACE",
-    "LOG_DEBUG",
-    "LOG_INFO ",
-    "LOG_WARN ",
-    "LOG_ERROR",
-    "LOG_ALARM",
-    "LOG_FATAL",
-};
-
-#ifdef WIN32
-const static WORD LOG_COLOR[LOG_LEVEL_FATAL + 1] = {
-    0,
-    0,
-    FOREGROUND_BLUE | FOREGROUND_GREEN,
-    FOREGROUND_GREEN | FOREGROUND_RED,
-    FOREGROUND_RED,
-    FOREGROUND_GREEN,
-    FOREGROUND_RED | FOREGROUND_BLUE };
-#else
-
-const static char LOG_COLOR[LOG_LEVEL_FATAL + 1][50] = {
-    "\e[0m",
-    "\e[0m",
-    "\e[34m\e[1m",//hight blue
-    "\e[33m", //yellow
-    "\e[31m", //red
-    "\e[32m", //green
-    "\e[35m" };
-#endif
-
 //////////////////////////////////////////////////////////////////////////
 //! Log4zFileHandler
 //////////////////////////////////////////////////////////////////////////
@@ -300,9 +268,9 @@ enum LogDataType
 struct LogData
 {
     LoggerId _id;        //dest logger id
-    int    _type;     //type.
+    int    _type;     //type
     int    _typeval;
-    int    _level;    //log level
+    LOG_LEVEL _level = LOG4Z_DEFAULT_LEVEL;    //log level
     time_t _time;        //create time
     unsigned int _precise; //create time 
     int _contentLen;
@@ -318,7 +286,7 @@ struct LoggerInfo
     std::string _key;   //logger key
     std::string _name;    // one logger one name.
     std::string _path;    //path for log file.
-    int  _level;        //filter level
+    LOG_LEVEL _level = LOG4Z_DEFAULT_LEVEL;        //filter level
     bool _display;        //display to screen 
     bool _outfile;        //output to file
     bool _monthdir;        //create directory per month 
@@ -370,15 +338,15 @@ public:
     virtual LoggerId createLogger(const char* key);
     virtual bool start();
     virtual bool stop();
-    virtual bool prePushLog(LoggerId id, int level);
-    virtual bool pushLog(LoggerId id, int level, const char * log, const char * file, int line);
+    virtual bool prePushLog(LoggerId id, const LOG_LEVEL& level);
+    virtual bool pushLog(LoggerId id, const LOG_LEVEL& level, const char * log, const char * file, int line);
     //! 查找ID
     virtual LoggerId findLogger(const char*  key);
-    bool hotChange(LoggerId id, LogDataType ldt, int num, const std::string & text);
+    bool hotChange(LoggerId id, LogDataType ldt, int num, const std::string & text, const LOG_LEVEL& lvl = LOG4Z_DEFAULT_LEVEL);
     virtual bool enableLogger(LoggerId id, bool enable);
     virtual bool setLoggerName(LoggerId id, const char * name);
     virtual bool setLoggerPath(LoggerId id, const char * path);
-    virtual bool setLoggerLevel(LoggerId id, int nLevel);
+    virtual bool setLoggerLevel(LoggerId id, const LOG_LEVEL& nLevel);
     virtual bool setLoggerFileLine(LoggerId id, bool enable);
     virtual bool setLoggerDisplay(LoggerId id, bool enable);
     virtual bool setLoggerOutFile(LoggerId id, bool enable);
@@ -393,8 +361,8 @@ public:
     virtual unsigned long long getStatusWaitingCount(){return _ullStatusTotalPushLog - _ullStatusTotalPopLog;}
     virtual unsigned int getStatusActiveLoggers();
 protected:
-    void showColorText(const char *text, int level = LOG_LEVEL_DEBUG);
-    bool onHotChange(LoggerInfo & logger, LogDataType ldt, int num, const std::string & text);
+    void showColorText(const char *text, const LOG_LEVEL& level = LOG_LEVEL_DEBUG);
+    bool onHotChange(LoggerInfo & logger, LogDataType ldt, int num, const std::string & text, const LOG_LEVEL& lvl = LOG4Z_DEFAULT_LEVEL);
     bool openLogger(LogData * log);
     bool closeLogger(LoggerId id);
     bool popLog(LogData *& log);
@@ -655,32 +623,33 @@ static bool parseConfigLine(const std::string& line, int curLineNum, std::string
     {
         if (kv.second == "trace" || kv.second == "all")
         {
-            iter->second._level = LOG_LEVEL_TRACE;
+            iter->second._level.val = LOG_LEVEL_TRACE.val;
         }
         else if (kv.second == "debug")
         {
-            iter->second._level = LOG_LEVEL_DEBUG;
+            iter->second._level.val = LOG_LEVEL_DEBUG.val;
         }
         else if (kv.second == "info")
         {
-            iter->second._level = LOG_LEVEL_INFO;
+            iter->second._level.val = LOG_LEVEL_INFO.val;
         }
         else if (kv.second == "warn" || kv.second == "warning")
         {
-            iter->second._level = LOG_LEVEL_WARN;
+            iter->second._level.val = LOG_LEVEL_WARN.val;
         }
         else if (kv.second == "error")
         {
-            iter->second._level = LOG_LEVEL_ERROR;
+            iter->second._level.val = LOG_LEVEL_ERROR.val;
         }
         else if (kv.second == "alarm")
         {
-            iter->second._level = LOG_LEVEL_ALARM;
+            iter->second._level.val = LOG_LEVEL_ALARM.val;
         }
         else if (kv.second == "fatal")
         {
-            iter->second._level = LOG_LEVEL_FATAL;
+            iter->second._level.val = LOG_LEVEL_FATAL.val;
         }
+		// ***
     }
     //! display
     else if (kv.first == "display")
@@ -1159,7 +1128,7 @@ LogerManager::~LogerManager()
 
 
 
-void LogerManager::showColorText(const char *text, int level)
+void LogerManager::showColorText(const char *text, const LOG_LEVEL& level)
 {
     if (level <= LOG_LEVEL_DEBUG || level > LOG_LEVEL_FATAL)
     {
@@ -1180,7 +1149,7 @@ void LogerManager::showColorText(const char *text, int level)
     }
     else 
     {
-        SetConsoleTextAttribute(hStd, LOG_COLOR[level]);
+        SetConsoleTextAttribute(hStd, level.color);
         printf("%s", text);
         SetConsoleTextAttribute(hStd, oldInfo.wAttributes);
     }
@@ -1329,7 +1298,7 @@ bool LogerManager::stop()
     }
     return false;
 }
-bool LogerManager::prePushLog(LoggerId id, int level)
+bool LogerManager::prePushLog(LoggerId id, const LOG_LEVEL& level)
 {
     if (id < 0 || id > _lastId || !_runing || !_loggers[id]._enable)
     {
@@ -1341,7 +1310,7 @@ bool LogerManager::prePushLog(LoggerId id, int level)
     }
     return true;
 }
-bool LogerManager::pushLog(LoggerId id, int level, const char * log, const char * file, int line)
+bool LogerManager::pushLog(LoggerId id, const LOG_LEVEL& level, const char * log, const char * file, int line)
 {
     // discard log
     if (id < 0 || id > _lastId || !_runing || !_loggers[id]._enable)
@@ -1391,7 +1360,7 @@ bool LogerManager::pushLog(LoggerId id, int level, const char * log, const char 
 #ifdef WIN32
             int ret = _snprintf_s(pLog->_content, LOG4Z_LOG_BUF_SIZE, _TRUNCATE, "%d-%02d-%02d %02d:%02d:%02d.%03d %s %s \r\n",
                 tt.tm_year + 1900, tt.tm_mon + 1, tt.tm_mday, tt.tm_hour, tt.tm_min, tt.tm_sec, pLog->_precise,
-                LOG_STRING[pLog->_level], log);
+                pLog->_level.name.c_str(), log);
             if (ret == -1)
             {
                 ret = LOG4Z_LOG_BUF_SIZE - 1;
@@ -1427,7 +1396,7 @@ bool LogerManager::pushLog(LoggerId id, int level, const char * log, const char 
 #ifdef WIN32
             int ret = _snprintf_s(pLog->_content, LOG4Z_LOG_BUF_SIZE, _TRUNCATE, "%d-%02d-%02d %02d:%02d:%02d.%03d %s %s (%s):%d \r\n",
                 tt.tm_year + 1900, tt.tm_mon + 1, tt.tm_mday, tt.tm_hour, tt.tm_min, tt.tm_sec, pLog->_precise,
-                LOG_STRING[pLog->_level], log, pNameBegin, line);
+                pLog->_level.name.c_str(), log, pNameBegin, line);
             if (ret == -1)
             {
                 ret = LOG4Z_LOG_BUF_SIZE - 1;
@@ -1506,7 +1475,7 @@ LoggerId LogerManager::findLogger(const char * key)
     return LOG4Z_INVALID_LOGGER_ID;
 }
 
-bool LogerManager::hotChange(LoggerId id, LogDataType ldt, int num, const std::string & text)
+bool LogerManager::hotChange(LoggerId id, LogDataType ldt, int num, const std::string & text, const LOG_LEVEL& lvl)
 {
     if (id <0 || id > _lastId) return false;
     if (text.length() >= LOG4Z_LOG_BUF_SIZE) return false;
@@ -1514,6 +1483,7 @@ bool LogerManager::hotChange(LoggerId id, LogDataType ldt, int num, const std::s
     pLog->_id = id;
     pLog->_type = ldt;
     pLog->_typeval = num;
+	pLog->_level = lvl;
     memcpy(pLog->_content, text.c_str(), text.length());
     pLog->_contentLen = text.length();
     AutoLock l(_logLock);
@@ -1521,12 +1491,12 @@ bool LogerManager::hotChange(LoggerId id, LogDataType ldt, int num, const std::s
     return true;
 }
 
-bool LogerManager::onHotChange(LoggerInfo & logger, LogDataType ldt, int num, const std::string & text)
+bool LogerManager::onHotChange(LoggerInfo & logger, LogDataType ldt, int num, const std::string & text, const LOG_LEVEL& lvl)
 {
     if (ldt == LDT_ENABLE_LOGGER) logger._enable = num != 0;
     else if (ldt == LDT_SET_LOGGER_NAME) logger._name = text;
     else if (ldt == LDT_SET_LOGGER_PATH) logger._path = text;
-    else if (ldt == LDT_SET_LOGGER_LEVEL) logger._level = num;
+    else if (ldt == LDT_SET_LOGGER_LEVEL) logger._level = lvl;
     else if (ldt == LDT_SET_LOGGER_FILELINE) logger._fileLine = num != 0;
     else if (ldt == LDT_SET_LOGGER_DISPLAY) logger._display = num != 0;
     else if (ldt == LDT_SET_LOGGER_OUTFILE) logger._outfile = num != 0;
@@ -1541,11 +1511,11 @@ bool LogerManager::enableLogger(LoggerId id, bool enable)
     if (enable) _loggers[id]._enable = true;
     return hotChange(id, LDT_ENABLE_LOGGER, enable, ""); 
 }
-bool LogerManager::setLoggerLevel(LoggerId id, int level) 
+bool LogerManager::setLoggerLevel(LoggerId id, const LOG_LEVEL& level) 
 { 
     if (id < 0 || id > _lastId) return false;
     if (level < _loggers[id]._level) _loggers[id]._level = level;
-    return hotChange(id, LDT_SET_LOGGER_LEVEL, level, ""); 
+    return hotChange(id, LDT_SET_LOGGER_LEVEL, 0 , "", level); 
 }
 bool LogerManager::setLoggerDisplay(LoggerId id, bool enable) { return hotChange(id, LDT_SET_LOGGER_DISPLAY, enable, ""); }
 bool LogerManager::setLoggerOutFile(LoggerId id, bool enable) { return hotChange(id, LDT_SET_LOGGER_OUTFILE, enable, ""); }
@@ -1740,7 +1710,7 @@ void LogerManager::run()
                 <<" key=" <<_loggers[i]._key
                 <<" name=" <<_loggers[i]._name
                 <<" path=" <<_loggers[i]._path
-                <<" level=" << _loggers[i]._level
+                <<" level=" << _loggers[i]._level.name
                 <<" display=" << _loggers[i]._display;
             pushLog(0, LOG_LEVEL_ALARM, ss.str().c_str(), NULL, 0);
         }
@@ -1765,7 +1735,7 @@ void LogerManager::run()
 
             if (pLog->_type != LDT_GENERAL)
             {
-                onHotChange(curLogger, (LogDataType)pLog->_type, pLog->_typeval, std::string(pLog->_content, pLog->_contentLen));
+                onHotChange(curLogger, (LogDataType)pLog->_type, pLog->_typeval, std::string(pLog->_content, pLog->_contentLen), pLog->_level);
                 curLogger._handle.close();
                 delete pLog;
                 continue;
