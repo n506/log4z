@@ -1841,9 +1841,3 @@ ILog4zManager * ILog4zManager::getInstance()
 
 _ZSUMMER_LOG4Z_END
 _ZSUMMER_END
-
-//////////////////////////////////////////////////////////////////////////
-// init static
-//////////////////////////////////////////////////////////////////////////
-//CONSOLE_COLORS& LOG_LEVEL::colors = CONSOLE_COLORS::getInstance();
-//static CONSOLE_COLORS COLORS = CONSOLE_COLORS::getInstance();
