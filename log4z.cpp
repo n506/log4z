@@ -270,11 +270,13 @@ struct LogData
     LoggerId _id;        //dest logger id
     int    _type;     //type
     int    _typeval;
-    LOG_LEVEL _level = LOG4Z_DEFAULT_LEVEL;    //log level
+    LOG_LEVEL _level;    //log level
     time_t _time;        //create time
     unsigned int _precise; //create time 
     int _contentLen;
     char _content[LOG4Z_LOG_BUF_SIZE]; //content
+
+    LogData() : _level(LOG4Z_DEFAULT_LEVEL) {}
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -286,7 +288,7 @@ struct LoggerInfo
     std::string _key;   //logger key
     std::string _name;    // one logger one name.
     std::string _path;    //path for log file.
-    LOG_LEVEL _level = LOG4Z_DEFAULT_LEVEL;        //filter level
+    LOG_LEVEL _level;        //filter level
     bool _display;        //display to screen 
     bool _outfile;        //output to file
     bool _monthdir;        //create directory per month 
@@ -300,8 +302,7 @@ struct LoggerInfo
     unsigned int _curWriteLen;  //current file length
     Log4zFileHandler    _handle;        //file handle.
 
-    
-    LoggerInfo()
+    LoggerInfo() : _level(LOG4Z_DEFAULT_LEVEL)
     {
         _enable = false; 
         _path = LOG4Z_DEFAULT_PATH; 
