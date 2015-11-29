@@ -270,8 +270,11 @@ struct LOG_LEVEL {
 
 	LOG_LEVEL(int _val, const char* _name, const std::string& _color) : val(_val), name(_name)  {
 		color = CONSOLE_COLORS::getInstance()[_color];
+		ptr = static_cast<LOG_LEVEL*>(this);
 	}
-	LOG_LEVEL(const LOG_LEVEL& lvl) : val(lvl.val), name(lvl.name.c_str()), color(lvl.color) {}
+	LOG_LEVEL(const LOG_LEVEL& lvl) : val(lvl.val), name(lvl.name.c_str()), color(lvl.color) { 
+		ptr = static_cast<LOG_LEVEL*>(this); 
+	}
 
 	bool operator==(const LOG_LEVEL& lvl)  const {
 		return (val == lvl.val && name == lvl.name && color == lvl.color);
@@ -297,9 +300,14 @@ struct LOG_LEVEL {
 		return (val <= lvl.val);
 	}
 
+	LOG_LEVEL* getPtr() const {
+		return ptr;
+	}
+
 	int val;
 	std::string name;
 	LOG_COLOR color;
+	LOG_LEVEL *ptr;
 };
 
 //////////////////////////////////////////////////////////////////////////
