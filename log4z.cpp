@@ -83,6 +83,17 @@
 _ZSUMMER_BEGIN
 _ZSUMMER_LOG4Z_BEGIN
 
+static const char *const LOG_STRING[]=
+{
+    "LOG_TRACE",
+    "LOG_DEBUG",
+    "LOG_INFO ",
+    "LOG_WARN ",
+    "LOG_ERROR",
+    "LOG_ALARM",
+    "LOG_FATAL",
+};
+
 #ifdef WIN32
 const static WORD LOG_COLOR[LOG_LEVEL_FATAL + 1] = {
     0,
