@@ -272,8 +272,8 @@ struct LOG_LEVEL {
 		color = CONSOLE_COLORS::getInstance()[_color];
 		ptr = static_cast<LOG_LEVEL*>(this);
 	}
-	LOG_LEVEL(const LOG_LEVEL& lvl) : val(lvl.val), name(lvl.name.c_str()), color(lvl.color) { 
-		ptr = static_cast<LOG_LEVEL*>(this); 
+	LOG_LEVEL(const LOG_LEVEL& lvl) : val(lvl.val), name(lvl.name.c_str()), color(lvl.color) {
+		ptr = static_cast<LOG_LEVEL*>(this);
 	}
 
 	bool operator==(const LOG_LEVEL& lvl)  const {
@@ -372,7 +372,7 @@ public:
     virtual ~ILog4zManager(){};
 
     //! Log4z Singleton
-    
+
     static ILog4zManager * getInstance();
     inline static ILog4zManager & getRef(){return *getInstance();}
     inline static ILog4zManager * getPtr(){return getInstance();}
@@ -411,7 +411,7 @@ public:
     virtual bool setLoggerOutFile(LoggerId id, bool enable) = 0;
     virtual bool setLoggerLimitsize(LoggerId id, unsigned int limitsize) = 0;
     virtual bool setLoggerMonthdir(LoggerId id, bool enable) = 0;
-    
+
 
     //! Update logger's attribute from config file, thread safe.
     virtual bool setAutoUpdate(int interval/*per second, 0 is disable auto update*/) = 0;

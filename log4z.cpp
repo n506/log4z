@@ -410,8 +410,6 @@ private:
 };
 
 
-
-
 //////////////////////////////////////////////////////////////////////////
 //! Log4zFileHandler
 //////////////////////////////////////////////////////////////////////////
@@ -873,11 +871,6 @@ std::string getProcessName()
     return name;
 }
 
-
-
-
-
-
 //////////////////////////////////////////////////////////////////////////
 // LockHelper
 //////////////////////////////////////////////////////////////////////////
@@ -1245,7 +1238,7 @@ LoggerId LogerManager::createLogger(const char* key)
     {
         return LOG4Z_INVALID_LOGGER_ID;
     }
-    
+
     std::string copyKey = key;
     trimLogConfig(copyKey);
 
@@ -1453,7 +1446,7 @@ bool LogerManager::pushLog(LoggerId id, const LOG_LEVEL& level, const char * log
         delete pLog;
         return true;
     }
-    
+
     AutoLock l(_logLock);
     _logs.push_back(pLog);
     _ullStatusTotalPushLog ++;
@@ -1509,7 +1502,7 @@ bool LogerManager::enableLogger(LoggerId id, bool enable)
     return hotChange(id, LDT_ENABLE_LOGGER, enable, ""); 
 }
 bool LogerManager::setLoggerLevel(LoggerId id, const LOG_LEVEL& level) 
-{ 
+{
     if (id < 0 || id > _lastId) return false;
     if (level < *(_loggers[id]._level)) _loggers[id]._level = level.ptr;
     return hotChange(id, LDT_SET_LOGGER_LEVEL, 0 , "", level); 
@@ -1640,7 +1633,7 @@ bool LogerManager::openLogger(LogData * pLog)
         name = pLogger->_name;
         path = pLogger->_path;
         _hotLock.unLock();
-        
+
         char buf[100] = { 0 };
         if (pLogger->_monthdir)
         {
@@ -1808,15 +1801,12 @@ void LogerManager::run()
         {
             break;
         }
-        
+
         if (_hotUpdateInterval != 0 && time(NULL) - lastCheckUpdate > _hotUpdateInterval)
         {
             updateConfig();
             lastCheckUpdate = time(NULL);
         }
-        
-
-
     }
 
     for (int i=0; i <= _lastId; i++)
