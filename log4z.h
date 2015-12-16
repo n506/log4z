@@ -177,7 +177,8 @@
 #include <list>
 #include <queue>
 #include <deque>
-
+#include <algorithm>
+#include <utility>
 
 //! logger ID type. DO NOT TOUCH
 typedef int LoggerId;
@@ -205,21 +206,169 @@ const char*const LOG4Z_MAIN_LOGGER_KEY = "Main";
 #define LOG4Z_FORMAT_INPUT_ENABLE
 #endif
 
-//! LOG Level
-enum ENUM_LOG_LEVEL
-{
-    LOG_LEVEL_TRACE = 0,
-    LOG_LEVEL_DEBUG,
-    LOG_LEVEL_INFO,
-    LOG_LEVEL_WARN,
-    LOG_LEVEL_ERROR,
-    LOG_LEVEL_ALARM,
-    LOG_LEVEL_FATAL,
+//! LOG_COLOR OS dependent types
+#ifdef WIN32
+typedef WORD LOG_COLOR;
+#else
+typedef std::string LOG_COLOR;
+#endif
+
+//! COLORS helper singleton struct
+struct CONSOLE_COLORS {
+	static CONSOLE_COLORS& getInstance() {
+		static CONSOLE_COLORS* me = new CONSOLE_COLORS();
+		return *me;
+	}
+	LOG_COLOR& operator[](const std::string& key) {
+		return m[key];
+	}
+private:
+	std::map<std::string, LOG_COLOR> m;
+	CONSOLE_COLORS() {
+
+#ifdef WIN32
+		m["black"] = 0;
+		m["darkblue"] = FOREGROUND_BLUE;
+		m["darkgreen"] = FOREGROUND_GREEN;
+		m["darkcyan"] = FOREGROUND_BLUE | FOREGROUND_GREEN;
+		m["darkred"] = FOREGROUND_RED;
+		m["darkmagenta"] = FOREGROUND_RED | FOREGROUND_BLUE;
+		m["darkyellow"] = FOREGROUND_RED | FOREGROUND_GREEN;
+		m["darkgray"] = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE;
+		m["gray"] = FOREGROUND_INTENSITY;
+		m["blue"] = FOREGROUND_INTENSITY | FOREGROUND_BLUE;
+		m["green"] = FOREGROUND_INTENSITY | FOREGROUND_GREEN;
+		m["cyan"] = FOREGROUND_INTENSITY | FOREGROUND_BLUE | FOREGROUND_GREEN;
+		m["red"] = FOREGROUND_INTENSITY | FOREGROUND_RED;
+		m["magenta"] = FOREGROUND_INTENSITY | FOREGROUND_RED | FOREGROUND_BLUE;
+		m["yellow"] = FOREGROUND_INTENSITY | FOREGROUND_RED | FOREGROUND_GREEN;
+		m["gray"] = FOREGROUND_INTENSITY | FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE;
+		m["white"] = FOREGROUND_INTENSITY | FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE;
+#else
+		m["black"] = "\e[0;30m";
+		m["darkblue"] = "\e[0;34m";
+		m["darkgreen"] = "\e[0;32m";
+		m["darkcyan"] = "\e[0;36m";
+		m["darkred"] = "\e[0;31m";
+		m["darkmagenta"] = "\e[0;35m";
+		m["darkyellow"] = "\e[0;33m";
+		m["darkgray"] = "\e[0;37m";
+		m["gray"] = "\e[1;30m";
+		m["blue"] = "\e[1;34m";
+		m["green"] = "\e[1;32m";
+		m["cyan"] = "\e[1;36m";
+		m["red"] = "\e[1;31m";
+		m["magenta"] = "\e[1;35m";
+		m["yellow"] = "\e[1;33m";
+		m["white"] = "\e[1;37m";
+#endif
+	}
+};
+
+//! LOG Level helper struct
+struct LOG_LEVEL;
+bool lvl_comparator(const std::string s1, const std::string s2);
+typedef std::map<std::string, LOG_LEVEL*, bool(*)(const std::string, const std::string)> log_levels_map;
+typedef std::map<std::string, int> log_levels_id_map;
+struct LOG_LEVEL_MAPPER {
+	static LOG_LEVEL_MAPPER& getInstance() {
+		static LOG_LEVEL_MAPPER* me = new LOG_LEVEL_MAPPER();
+		return *me;
+	}
+	log_levels_map& levels_map() {
+		return _levels_map;
+	}
+	log_levels_id_map& levels_id_map() {
+		return _levels_id_map;
+	}
+private:
+	LOG_LEVEL_MAPPER() {
+		_levels_id_map = log_levels_id_map();
+		_levels_map = log_levels_map(lvl_comparator);
+	}
+
+	log_levels_map _levels_map;
+	log_levels_id_map _levels_id_map;
+};
+
+struct LOG_LEVEL {
+
+	LOG_LEVEL(int _val, const char* _name, const std::string& _color) : val(_val), name(_name)  {
+		color = CONSOLE_COLORS::getInstance()[_color];
+		ptr = static_cast<LOG_LEVEL*>(this);
+		LOG_LEVEL_MAPPER::getInstance().levels_id_map()[_name] = _val;
+		LOG_LEVEL_MAPPER::getInstance().levels_map()[_name]=ptr;
+	}
+	LOG_LEVEL(const LOG_LEVEL& lvl) : val(lvl.val), name(lvl.name.c_str()), color(lvl.color) {
+		ptr = static_cast<LOG_LEVEL*>(this);
+		LOG_LEVEL_MAPPER::getInstance().levels_id_map()[name] = val;
+		LOG_LEVEL_MAPPER::getInstance().levels_map()[name] = ptr;
+	}
+
+	bool operator==(const LOG_LEVEL& lvl)  const {
+		return (val == lvl.val && name == lvl.name && color == lvl.color);
+	}
+
+	bool operator!=(const LOG_LEVEL& lvl) const {
+		return (val != lvl.val || name != lvl.name || color != lvl.color);
+	}
+
+	bool operator>(const LOG_LEVEL& lvl) const {
+		return (val > lvl.val);
+	}
+
+	bool operator<(const LOG_LEVEL& lvl) const {
+		return (val < lvl.val);
+	}
+
+	bool operator>=(const LOG_LEVEL& lvl) const {
+		return (val >= lvl.val);
+	}
+
+	bool operator<=(const LOG_LEVEL& lvl) const {
+		return (val <= lvl.val);
+	}
+
+	std::string getName() const {
+		return name;
+	}
+
+	int getVal() const {
+		return val;
+	}
+
+	LOG_COLOR getColor() const {
+		return color;
+	}
+
+	LOG_LEVEL* getPtr() const {
+		return ptr;
+	}
+
+private:
+	int val;
+	std::string name;
+	LOG_COLOR color;
+	LOG_LEVEL *ptr;
 };
 
 //////////////////////////////////////////////////////////////////////////
 //! -----------------default logger config, can change on this.-----------
 //////////////////////////////////////////////////////////////////////////
+
+//! define log levels
+#define log_level_base 0
+//! string names for loglevels should match those used in config file
+const LOG_LEVEL
+	LOG_LEVEL_TRACE( log_level_base + 0, "trace" , "gray" ),
+	LOG_LEVEL_DEBUG( log_level_base + 1 , "debug" , "gray" ),
+	LOG_LEVEL_INFO( log_level_base + 2, "info" , "darkcyan" ),
+	LOG_LEVEL_WARN( log_level_base + 3, "warn" , "darkyellow" ),
+	LOG_LEVEL_ERROR( log_level_base + 4, "error" , "darkred" ),
+	LOG_LEVEL_ALARM( log_level_base + 5, "alarm" , "darkgreen" ),
+	// add your custom levels before FATAL, FATAL should be the highest one
+	LOG_LEVEL_FATAL( log_level_base + 999, "fatal", "darkmagenta" );
+
 //! the max logger count.
 const int LOG4Z_LOGGER_MAX = 10;
 //! the max log content length.
@@ -233,7 +382,7 @@ const bool LOG4Z_ALL_DEBUGOUTPUT_DISPLAY = false;
 //! default logger output file.
 const char* const LOG4Z_DEFAULT_PATH = "./log/";
 //! default log filter level
-const int LOG4Z_DEFAULT_LEVEL = LOG_LEVEL_DEBUG;
+const LOG_LEVEL LOG4Z_DEFAULT_LEVEL = LOG_LEVEL_DEBUG;
 //! default logger display
 const bool LOG4Z_DEFAULT_DISPLAY = true;
 //! default logger output to file
@@ -267,7 +416,7 @@ public:
     virtual ~ILog4zManager(){};
 
     //! Log4z Singleton
-    
+
     static ILog4zManager * getInstance();
     inline static ILog4zManager & getRef(){return *getInstance();}
     inline static ILog4zManager * getPtr(){return getInstance();}
@@ -292,21 +441,21 @@ public:
     virtual LoggerId findLogger(const char* key) =0;
 
     //pre-check the log filter. if filter out return false. 
-    virtual bool prePushLog(LoggerId id, int level) = 0;
+    virtual bool prePushLog(LoggerId id, const LOG_LEVEL& level) = 0;
     //! Push log, thread safe.
-    virtual bool pushLog(LoggerId id, int level, const char * log, const char * file = NULL, int line = 0) = 0;
+    virtual bool pushLog(LoggerId id, const LOG_LEVEL& level, const char * log, const char * file = NULL, int line = 0) = 0;
 
     //! set logger's attribute, thread safe.
     virtual bool enableLogger(LoggerId id, bool enable) = 0; // immediately when enable, and queue up when disable. 
     virtual bool setLoggerName(LoggerId id, const char * name) = 0;
     virtual bool setLoggerPath(LoggerId id, const char * path) = 0;
-    virtual bool setLoggerLevel(LoggerId id, int nLevel) = 0; // immediately when enable, and queue up when disable. 
+    virtual bool setLoggerLevel(LoggerId id, const LOG_LEVEL& nLevel) = 0; // immediately when enable, and queue up when disable. 
     virtual bool setLoggerFileLine(LoggerId id, bool enable) = 0;
     virtual bool setLoggerDisplay(LoggerId id, bool enable) = 0;
     virtual bool setLoggerOutFile(LoggerId id, bool enable) = 0;
     virtual bool setLoggerLimitsize(LoggerId id, unsigned int limitsize) = 0;
     virtual bool setLoggerMonthdir(LoggerId id, bool enable) = 0;
-    
+
 
     //! Update logger's attribute from config file, thread safe.
     virtual bool setAutoUpdate(int interval/*per second, 0 is disable auto update*/) = 0;

@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
     logid_fromfile = ILog4zManager::getRef().findLogger("fromfile");
     //start log4z
     ILog4zManager::getRef().start();
-
+	
     //configure the output behaviour
     ILog4zManager::getRef().setLoggerDisplay(LOG4Z_MAIN_LOGGER_ID, true);
     ILog4zManager::getRef().setLoggerDisplay(logid_dynamic, true);
