@@ -1108,7 +1108,7 @@ LogerManager::~LogerManager()
 void LogerManager::showColorText(const char *text, const LOG_LEVEL& level)
 {
 #ifndef WIN32
-    printf("%s%s\e[0m", level.color.c_str(), text);
+    printf("%s%s\e[0m", level.getColor().c_str(), text);
 #else
 
     AutoLock l(_scLock);
@@ -1343,7 +1343,7 @@ bool LogerManager::pushLog(LoggerId id, const LOG_LEVEL& level, const char * log
 #else
             int ret = snprintf(pLog->_content, LOG4Z_LOG_BUF_SIZE, "%d-%02d-%02d %02d:%02d:%02d.%03d %s %s \r\n",
                 tt.tm_year + 1900, tt.tm_mon + 1, tt.tm_mday, tt.tm_hour, tt.tm_min, tt.tm_sec, pLog->_precise,
-                pLog->_level->name.c_str(), log);
+                pLog->_level->getName().c_str(), log);
             if (ret == -1)
             {
                 ret = 0;
@@ -1379,7 +1379,7 @@ bool LogerManager::pushLog(LoggerId id, const LOG_LEVEL& level, const char * log
 #else
             int ret = snprintf(pLog->_content, LOG4Z_LOG_BUF_SIZE, "%d-%02d-%02d %02d:%02d:%02d.%03d %s %s (%s):%d \r\n",
                 tt.tm_year + 1900, tt.tm_mon + 1, tt.tm_mday, tt.tm_hour, tt.tm_min, tt.tm_sec, pLog->_precise,
-                pLog->_level->name.c_str(), log, pNameBegin, line);
+                pLog->_level->getName().c_str(), log, pNameBegin, line);
             if (ret == -1)
             {
                 ret = 0;
