@@ -296,12 +296,13 @@ struct LOG_LEVEL {
 	LOG_LEVEL(int _val, const char* _name, const std::string& _color) : val(_val), name(_name)  {
 		color = CONSOLE_COLORS::getInstance()[_color];
 		ptr = static_cast<LOG_LEVEL*>(this);
-		mapper.levels_id_map()[_name] = _val;
-		mapper.levels_map()[_name]=ptr;
+		LOG_LEVEL_MAPPER::getInstance().levels_id_map()[_name] = _val;
+		LOG_LEVEL_MAPPER::getInstance().levels_map()[_name]=ptr;
 	}
 	LOG_LEVEL(const LOG_LEVEL& lvl) : val(lvl.val), name(lvl.name.c_str()), color(lvl.color) {
 		ptr = static_cast<LOG_LEVEL*>(this);
-		mapper.levels_map()[name] = ptr;
+		LOG_LEVEL_MAPPER::getInstance().levels_id_map()[name] = val;
+		LOG_LEVEL_MAPPER::getInstance().levels_map()[name] = ptr;
 	}
 
 	bool operator==(const LOG_LEVEL& lvl)  const {
@@ -349,7 +350,6 @@ private:
 	std::string name;
 	LOG_COLOR color;
 	LOG_LEVEL *ptr;
-	LOG_LEVEL_MAPPER& mapper = LOG_LEVEL_MAPPER::getInstance();
 };
 
 //////////////////////////////////////////////////////////////////////////
