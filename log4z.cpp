@@ -276,7 +276,7 @@ struct LogData
     int _contentLen;
     char _content[LOG4Z_LOG_BUF_SIZE]; //content
 
-    LogData() : _level(LOG4Z_DEFAULT_LEVEL.ptr) {}
+    LogData() : _level(LOG4Z_DEFAULT_LEVEL.getPtr()) {}
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -302,7 +302,7 @@ struct LoggerInfo
     unsigned int _curWriteLen;  //current file length
     Log4zFileHandler    _handle;        //file handle.
 
-    LoggerInfo() : _level(LOG4Z_DEFAULT_LEVEL.ptr)
+    LoggerInfo() : _level(LOG4Z_DEFAULT_LEVEL.getPtr())
     {
         _enable = false; 
         _path = LOG4Z_DEFAULT_PATH; 
@@ -370,7 +370,7 @@ protected:
 private:
 
     //! thread status.
-    bool        _runing;
+    bool        _running;
     //! wait thread started.
     SemHelper        _semaphore;
 
@@ -590,7 +590,7 @@ static bool parseConfigLine(const std::string& line, int curLineNum, std::string
         }
         else
         {
-            std::cout << "log4z configure warning: duplicate logger key:["<< key << "] at line:" << curLineNum << std::endl;
+            std::cout << "log4z configure warning: duplicate logger key: ["<< key << "] at line:" << curLineNum << std::endl;
         }
         return true;
     }
@@ -599,7 +599,7 @@ static bool parseConfigLine(const std::string& line, int curLineNum, std::string
     std::map<std::string, LoggerInfo>::iterator iter = outInfo.find(key);
     if (iter == outInfo.end())
     {
-        std::cout << "log4z configure warning: not found current logger name:["<< key << "] at line:" << curLineNum
+        std::cout << "log4z configure warning: not found current logger name: ["<< key << "] at line:" << curLineNum
             << ", key=" << kv.first << ", value=" << kv.second << std::endl;
         return true;
     }
@@ -615,105 +615,92 @@ static bool parseConfigLine(const std::string& line, int curLineNum, std::string
         iter->second._name = kv.second;
         return true;
     }
-    std::transform(kv.second.begin(), kv.second.end(), kv.second.begin(), ::tolower);
     //! level
     if (kv.first == "level")
     {
-        if (kv.second == "trace" || kv.second == "all")
-        {
-            iter->second._level->val = LOG_LEVEL_TRACE.val;
-        }
-        else if (kv.second == "debug")
-        {
-            iter->second._level->val = LOG_LEVEL_DEBUG.val;
-        }
-        else if (kv.second == "info")
-        {
-            iter->second._level->val = LOG_LEVEL_INFO.val;
-        }
-        else if (kv.second == "warn" || kv.second == "warning")
-        {
-            iter->second._level->val = LOG_LEVEL_WARN.val;
-        }
-        else if (kv.second == "error")
-        {
-            iter->second._level->val = LOG_LEVEL_ERROR.val;
-        }
-        else if (kv.second == "alarm")
-        {
-            iter->second._level->val = LOG_LEVEL_ALARM.val;
-        }
-        else if (kv.second == "fatal")
-        {
-            iter->second._level->val = LOG_LEVEL_FATAL.val;
-        }
-		// ***
+		log_levels_map map = LOG_LEVEL_MAPPER::getInstance().levels_map();
+		log_levels_map::iterator ll = map.find(kv.second);
+		if (ll == map.end()) {
+			std::cout << "log4z configure warning: unknown logger level in : [" << key << "] at line:" << curLineNum << ", key=" << kv.first << ", value=" << kv.second << std::endl;
+			std::cout << "Available loglevels (in order from most to least verbose): ";
+			for (ll = map.begin(); ll != map.end(); ++ll) {
+				std::cout << ll->first << " ";
+			}
+			std::cout << std::endl << "Assigning default loglevel [" << LOG4Z_DEFAULT_LEVEL.getName() << "]" << std::endl;
+			iter->second._level = LOG4Z_DEFAULT_LEVEL.getPtr();
+		}
+		else {
+			iter->second._level = ll->second->getPtr();
+		}
     }
     //! display
-    else if (kv.first == "display")
-    {
-        if (kv.second == "false" || kv.second == "0")
-        {
-            iter->second._display = false;
-        }
-        else
-        {
-            iter->second._display = true;
-        }
-    }
-    //! output to file
-    else if (kv.first == "outfile")
-    {
-        if (kv.second == "false" || kv.second == "0")
-        {
-            iter->second._outfile = false;
-        }
-        else
-        {
-            iter->second._outfile = true;
-        }
-    }
-    //! monthdir
-    else if (kv.first == "monthdir")
-    {
-        if (kv.second == "false" || kv.second == "0")
-        {
-            iter->second._monthdir = false;
-        }
-        else
-        {
-            iter->second._monthdir = true;
-        }
-    }
-    //! limit file size
-    else if (kv.first == "limitsize")
-    {
-        iter->second._limitsize = atoi(kv.second.c_str());
-    }
-    //! display log in file line
-    else if (kv.first == "fileline")
-    {
-        if (kv.second == "false" || kv.second == "0")
-        {
-            iter->second._fileLine = false;
-        }
-        else
-        {
-            iter->second._fileLine = true;
-        }
-    }
-    //! enable/disable one logger
-    else if (kv.first == "enable")
-    {
-        if (kv.second == "false" || kv.second == "0")
-        {
-            iter->second._enable = false;
-        }
-        else
-        {
-            iter->second._enable = true;
-        }
-    }
+	else {
+		std::transform(kv.second.begin(), kv.second.end(), kv.second.begin(), ::tolower);
+		if (kv.first == "display")
+		{
+			if (kv.second == "false" || kv.second == "0")
+			{
+				iter->second._display = false;
+			}
+			else
+			{
+				iter->second._display = true;
+			}
+		}
+		//! output to file
+		else if (kv.first == "outfile")
+		{
+			if (kv.second == "false" || kv.second == "0")
+			{
+				iter->second._outfile = false;
+			}
+			else
+			{
+				iter->second._outfile = true;
+			}
+		}
+		//! monthdir
+		else if (kv.first == "monthdir")
+		{
+			if (kv.second == "false" || kv.second == "0")
+			{
+				iter->second._monthdir = false;
+			}
+			else
+			{
+				iter->second._monthdir = true;
+			}
+		}
+		//! limit file size
+		else if (kv.first == "limitsize")
+		{
+			iter->second._limitsize = atoi(kv.second.c_str());
+		}
+		//! display log in file line
+		else if (kv.first == "fileline")
+		{
+			if (kv.second == "false" || kv.second == "0")
+			{
+				iter->second._fileLine = false;
+			}
+			else
+			{
+				iter->second._fileLine = true;
+			}
+		}
+		//! enable/disable one logger
+		else if (kv.first == "enable")
+		{
+			if (kv.second == "false" || kv.second == "0")
+			{
+				iter->second._enable = false;
+			}
+			else
+			{
+				iter->second._enable = true;
+			}
+		}
+	}
     return true;
 }
 
@@ -1096,7 +1083,7 @@ bool ThreadHelper::wait()
 //////////////////////////////////////////////////////////////////////////
 LogerManager::LogerManager()
 {
-    _runing = false;
+    _running = false;
     _lastId = LOG4Z_MAIN_LOGGER_ID;
     _hotUpdateInterval = 0;
 
@@ -1120,11 +1107,6 @@ LogerManager::~LogerManager()
 
 void LogerManager::showColorText(const char *text, const LOG_LEVEL& level)
 {
-    if (level <= LOG_LEVEL_DEBUG || level > LOG_LEVEL_FATAL)
-    {
-        printf("%s", text);
-        return;
-    }
 #ifndef WIN32
     printf("%s%s\e[0m", level.color.c_str(), text);
 #else
@@ -1135,11 +1117,13 @@ void LogerManager::showColorText(const char *text, const LOG_LEVEL& level)
     CONSOLE_SCREEN_BUFFER_INFO oldInfo;
     if (!GetConsoleScreenBufferInfo(hStd, &oldInfo))
     {
-        return;
+		// try to not to lose message
+		printf("%s", text);
+		return;
     }
     else 
     {
-        SetConsoleTextAttribute(hStd, level.color);
+        SetConsoleTextAttribute(hStd, level.getColor());
         printf("%s", text);
         SetConsoleTextAttribute(hStd, oldInfo.wAttributes);
     }
@@ -1270,7 +1254,7 @@ LoggerId LogerManager::createLogger(const char* key)
 
 bool LogerManager::start()
 {
-    if (_runing)
+    if (_running)
     {
         return false;
     }
@@ -1280,9 +1264,9 @@ bool LogerManager::start()
 }
 bool LogerManager::stop()
 {
-    if (_runing == true)
+    if (_running == true)
     {
-        _runing = false;
+        _running = false;
         wait();
         return true;
     }
@@ -1290,7 +1274,7 @@ bool LogerManager::stop()
 }
 bool LogerManager::prePushLog(LoggerId id, const LOG_LEVEL& level)
 {
-    if (id < 0 || id > _lastId || !_runing || !_loggers[id]._enable)
+    if (id < 0 || id > _lastId || !_running || !_loggers[id]._enable)
     {
         return false;
     }
@@ -1303,7 +1287,7 @@ bool LogerManager::prePushLog(LoggerId id, const LOG_LEVEL& level)
 bool LogerManager::pushLog(LoggerId id, const LOG_LEVEL& level, const char * log, const char * file, int line)
 {
     // discard log
-    if (id < 0 || id > _lastId || !_runing || !_loggers[id]._enable)
+    if (id < 0 || id > _lastId || !_running || !_loggers[id]._enable)
     {
         return false;
     }
@@ -1319,7 +1303,7 @@ bool LogerManager::pushLog(LoggerId id, const LOG_LEVEL& level, const char * log
     pLog->_id =id;
     pLog->_type = LDT_GENERAL;
     pLog->_typeval = 0;
-    pLog->_level = level.ptr;
+    pLog->_level = level.getPtr();
     
     //append precise time to log
     {
@@ -1350,7 +1334,7 @@ bool LogerManager::pushLog(LoggerId id, const LOG_LEVEL& level, const char * log
 #ifdef WIN32
             int ret = _snprintf_s(pLog->_content, LOG4Z_LOG_BUF_SIZE, _TRUNCATE, "%d-%02d-%02d %02d:%02d:%02d.%03d %s %s \r\n",
                 tt.tm_year + 1900, tt.tm_mon + 1, tt.tm_mday, tt.tm_hour, tt.tm_min, tt.tm_sec, pLog->_precise,
-                pLog->_level->name.c_str(), log);
+                pLog->_level->getName().c_str(), log);
             if (ret == -1)
             {
                 ret = LOG4Z_LOG_BUF_SIZE - 1;
@@ -1386,7 +1370,7 @@ bool LogerManager::pushLog(LoggerId id, const LOG_LEVEL& level, const char * log
 #ifdef WIN32
             int ret = _snprintf_s(pLog->_content, LOG4Z_LOG_BUF_SIZE, _TRUNCATE, "%d-%02d-%02d %02d:%02d:%02d.%03d %s %s (%s):%d \r\n",
                 tt.tm_year + 1900, tt.tm_mon + 1, tt.tm_mday, tt.tm_hour, tt.tm_min, tt.tm_sec, pLog->_precise,
-                pLog->_level->name.c_str(), log, pNameBegin, line);
+                pLog->_level->getName().c_str(), log, pNameBegin, line);
             if (ret == -1)
             {
                 ret = LOG4Z_LOG_BUF_SIZE - 1;
@@ -1473,7 +1457,7 @@ bool LogerManager::hotChange(LoggerId id, LogDataType ldt, int num, const std::s
     pLog->_id = id;
     pLog->_type = ldt;
     pLog->_typeval = num;
-	pLog->_level = lvl.ptr;
+	pLog->_level = lvl.getPtr();
     memcpy(pLog->_content, text.c_str(), text.length());
     pLog->_contentLen = text.length();
     AutoLock l(_logLock);
@@ -1486,7 +1470,7 @@ bool LogerManager::onHotChange(LoggerInfo & logger, LogDataType ldt, int num, co
     if (ldt == LDT_ENABLE_LOGGER) logger._enable = num != 0;
     else if (ldt == LDT_SET_LOGGER_NAME) logger._name = text;
     else if (ldt == LDT_SET_LOGGER_PATH) logger._path = text;
-    else if (ldt == LDT_SET_LOGGER_LEVEL) logger._level = lvl.ptr;
+    else if (ldt == LDT_SET_LOGGER_LEVEL) logger._level = lvl.getPtr();
     else if (ldt == LDT_SET_LOGGER_FILELINE) logger._fileLine = num != 0;
     else if (ldt == LDT_SET_LOGGER_DISPLAY) logger._display = num != 0;
     else if (ldt == LDT_SET_LOGGER_OUTFILE) logger._outfile = num != 0;
@@ -1504,7 +1488,10 @@ bool LogerManager::enableLogger(LoggerId id, bool enable)
 bool LogerManager::setLoggerLevel(LoggerId id, const LOG_LEVEL& level) 
 {
     if (id < 0 || id > _lastId) return false;
-    if (level < *(_loggers[id]._level)) _loggers[id]._level = level.ptr;
+	if ((level < *(_loggers[id]._level)) || (!_running)) {
+		_loggers[id]._level = level.getPtr();
+		return true;
+	}
     return hotChange(id, LDT_SET_LOGGER_LEVEL, 0 , "", level); 
 }
 bool LogerManager::setLoggerDisplay(LoggerId id, bool enable) { return hotChange(id, LDT_SET_LOGGER_DISPLAY, enable, ""); }
@@ -1689,7 +1676,7 @@ bool LogerManager::popLog(LogData *& log)
 
 void LogerManager::run()
 {
-    _runing = true;
+    _running = true;
     pushLog(0, LOG_LEVEL_ALARM, "-----------------  log4z thread started!   ----------------------------", NULL, 0);
     for (int i = 0; i <= _lastId; i++)
     {
@@ -1700,7 +1687,7 @@ void LogerManager::run()
                 <<" key=" <<_loggers[i]._key
                 <<" name=" <<_loggers[i]._name
                 <<" path=" <<_loggers[i]._path
-                <<" level=" << _loggers[i]._level->name
+                <<" level=" << _loggers[i]._level->getName()
                 <<" display=" << _loggers[i]._display;
             pushLog(0, LOG_LEVEL_ALARM, ss.str().c_str(), NULL, 0);
         }
@@ -1797,7 +1784,7 @@ void LogerManager::run()
         sleepMillisecond(100);
 
         //! quit
-        if (!_runing && _logs.empty())
+        if (!_running && _logs.empty())
         {
             break;
         }
@@ -1831,3 +1818,14 @@ ILog4zManager * ILog4zManager::getInstance()
 
 _ZSUMMER_LOG4Z_END
 _ZSUMMER_END
+
+bool lvl_comparator(const std::string s1, const std::string s2)
+{
+	log_levels_id_map map = LOG_LEVEL_MAPPER::getInstance().levels_id_map();
+	log_levels_id_map::iterator l1 = map.find(s1);
+	if (l1 == map.end()) return false;
+	log_levels_id_map::iterator l2 = map.find(s2);
+	if (l2 == map.end()) return true;
+	
+	return l1->second < l2->second;
+}

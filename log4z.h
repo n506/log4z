@@ -266,14 +266,42 @@ private:
 };
 
 //! LOG Level helper struct
+struct LOG_LEVEL;
+bool lvl_comparator(const std::string s1, const std::string s2);
+typedef std::map<std::string, LOG_LEVEL*, bool(*)(const std::string, const std::string)> log_levels_map;
+typedef std::map<std::string, int> log_levels_id_map;
+struct LOG_LEVEL_MAPPER {
+	static LOG_LEVEL_MAPPER& getInstance() {
+		static LOG_LEVEL_MAPPER* me = new LOG_LEVEL_MAPPER();
+		return *me;
+	}
+	log_levels_map& levels_map() {
+		return _levels_map;
+	}
+	log_levels_id_map& levels_id_map() {
+		return _levels_id_map;
+	}
+private:
+	LOG_LEVEL_MAPPER() {
+		_levels_id_map = log_levels_id_map();
+		_levels_map = log_levels_map(lvl_comparator);
+	}
+
+	log_levels_map _levels_map;
+	log_levels_id_map _levels_id_map;
+};
+
 struct LOG_LEVEL {
 
 	LOG_LEVEL(int _val, const char* _name, const std::string& _color) : val(_val), name(_name)  {
 		color = CONSOLE_COLORS::getInstance()[_color];
 		ptr = static_cast<LOG_LEVEL*>(this);
+		mapper.levels_id_map()[_name] = _val;
+		mapper.levels_map()[_name]=ptr;
 	}
 	LOG_LEVEL(const LOG_LEVEL& lvl) : val(lvl.val), name(lvl.name.c_str()), color(lvl.color) {
 		ptr = static_cast<LOG_LEVEL*>(this);
+		mapper.levels_map()[name] = ptr;
 	}
 
 	bool operator==(const LOG_LEVEL& lvl)  const {
@@ -300,14 +328,28 @@ struct LOG_LEVEL {
 		return (val <= lvl.val);
 	}
 
+	std::string getName() const {
+		return name;
+	}
+
+	int getVal() const {
+		return val;
+	}
+
+	LOG_COLOR getColor() const {
+		return color;
+	}
+
 	LOG_LEVEL* getPtr() const {
 		return ptr;
 	}
 
+private:
 	int val;
 	std::string name;
 	LOG_COLOR color;
 	LOG_LEVEL *ptr;
+	LOG_LEVEL_MAPPER& mapper = LOG_LEVEL_MAPPER::getInstance();
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -316,15 +358,16 @@ struct LOG_LEVEL {
 
 //! define log levels
 #define log_level_base 0
+//! string names for loglevels should match those used in config file
 const LOG_LEVEL
-	LOG_LEVEL_TRACE( log_level_base + 0, "LOG_TRACE" , "gray" ),
-	LOG_LEVEL_DEBUG( log_level_base + 1 , "LOG_DEBUG" , "gray" ),
-	LOG_LEVEL_INFO( log_level_base + 2, "LOG_INFO" , "darkcyan" ),
-	LOG_LEVEL_WARN( log_level_base + 3, "LOG_WARN" , "darkyellow" ),
-	LOG_LEVEL_ERROR( log_level_base + 4, "LOG_ERROR" , "darkred" ),
-	LOG_LEVEL_ALARM( log_level_base + 5, "LOG_ALARM" , "darkgreen" ),
+	LOG_LEVEL_TRACE( log_level_base + 0, "trace" , "gray" ),
+	LOG_LEVEL_DEBUG( log_level_base + 1 , "debug" , "gray" ),
+	LOG_LEVEL_INFO( log_level_base + 2, "info" , "darkcyan" ),
+	LOG_LEVEL_WARN( log_level_base + 3, "warn" , "darkyellow" ),
+	LOG_LEVEL_ERROR( log_level_base + 4, "error" , "darkred" ),
+	LOG_LEVEL_ALARM( log_level_base + 5, "alarm" , "darkgreen" ),
 	// add your custom levels before FATAL, FATAL should be the highest one
-	LOG_LEVEL_FATAL( log_level_base + 999, "LOG_FATAL", "darkmagenta" );
+	LOG_LEVEL_FATAL( log_level_base + 999, "fatal", "darkmagenta" );
 
 //! the max logger count.
 const int LOG4Z_LOGGER_MAX = 10;
